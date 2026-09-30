@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?  @unique
+  username      String   @unique
+  password_hash String
+  role          String   // "ADMIN" or "EMPLOYEE"
+  status        String   @default("ACTIVE") // "ACTIVE" or "DISABLED"
+  createdAt     DateTime @default(now())
+}
+
+model Event {
+  id               String   @id @default(cuid())
+  eventId          String   @unique // e.g. EVENT-2026-001
+  name             String
+  description      String?
+  date             String
+  startTime        String
+  endTime          String
+  venue            String?
+  status           String   @default("DRAFT") // DRAFT, UPCOMING, ACTIVE, COMPLETED, CANCELLED
+  createdBy        String
+  createdAt        DateTime @default(now())
+
+  participants     EventParticipant[]
+  attendance       Attendance[]
+}
+
+model Participant {
+  id             String   @id @default(cuid())
+  rollNumber     String   @unique
+  name           String
+  branch         String?
+  section        String?
+  admissionYear  Int?
+  academicYear   String?
+  qrToken        String   @unique
+  createdAt      DateTime @default(now())
+
+  events         EventParticipant[]
+  attendance     Attendance[]
+}
+
+model EventParticipant {
+  id            String   @id @default(cuid())
+  eventId       String
+  participantId String
+
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, participantId])
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  eventId       String
+  participantId String
+  scannedBy     String?
+  attendanceTime DateTime @default(now())
+  deviceInfo    String?
+  scanStatus    String   @default("PRESENT") // PRESENT, ABSENT
+  createdAt     DateTime @default(now())
+
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, participantId])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  action        String
+  eventId       String?
+  details       String?
+  timestamp     DateTime @default(now())
+  ipAddress     String?
+}
+
+model Settings {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  value         String
+  updatedAt     DateTime @updatedAt
+}

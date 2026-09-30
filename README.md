@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Attendance PRO
 
-## Getting Started
+A modern, responsive, QR Code-Based Event Attendance Management System.
 
-First, run the development server:
+## Features Implemented
+- **Role-based Access**: Separate Admin and Employee (Scanner) dashboards, secured with JWT and Next.js Middleware.
+- **Dynamic Database**: Powered by Prisma ORM and SQLite (local dev friendly).
+- **Admin Capabilities**:
+  - Event Creation and Management.
+  - Bulk Participant Upload via Excel (`.xlsx`, `.csv`).
+  - Column Mapping during import.
+  - Live Real-time Attendance Dashboard.
+  - Attendance Report Export to Excel.
+  - Event-specific QR code generation and printing.
+  - Custom Roll Number identification rules configuration.
+  - Employee user management.
+- **Employee Capabilities**:
+  - Securely access active events.
+  - Mobile-friendly HTML5 QR Code Scanner using the device camera.
+  - Server-side validations (Event active, Participant registered, Prevent duplicates).
+- **Premium UI/UX**:
+  - Built with Tailwind CSS.
+  - Glassmorphism UI elements.
+  - Smooth micro-animations and gradients.
+  - Fully responsive, mobile-first scanner.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Quick Start
+The development server is already running on port `3001` (to avoid conflicts).
+You can access the application here: http://localhost:3001
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Demo Credentials
+First, hit the setup endpoint to generate demo users: http://localhost:3001/api/setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Admin:**
+- Username: `admin`
+- Password: `admin`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Employee (Staff Scanner):**
+- Username: `employee1`
+- Password: `employee1`
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Workflow Testing
+1. Login as Admin.
+2. Go to **Events** -> **Create Event**. Make sure to set the status to "ACTIVE".
+3. Click **Manage** on the event.
+4. Go to the **Participants** tab and upload an Excel file. Map the columns correctly and confirm.
+5. In a new browser window/tab, login as Employee (`employee1`).
+6. Select the active event and open the QR scanner.
+7. You can test scanning using QR codes generated from the Admin's **Generate Event QR** tab.
+8. Watch the Admin's **Live Dashboard** update as scans are recorded!
