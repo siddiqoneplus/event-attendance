@@ -12,20 +12,20 @@ export default function LiveDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isPolling, setIsPolling] = useState(true);
 
-  const fetchLiveStats = async () => {
-    try {
-      const res = await fetch(`/api/admin/events/${params.id}/live`);
-      const json = await res.json();
-      if (json.event) {
-        setData(json);
-        setLastUpdated(new Date());
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
+    const fetchLiveStats = async () => {
+      try {
+        const res = await fetch(`/api/admin/events/${params.id}/live`);
+        const json = await res.json();
+        if (json.event) {
+          setData(json);
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     fetchLiveStats();
     let interval: NodeJS.Timeout;
     if (isPolling) {

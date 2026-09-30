@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
 import { Calendar, MapPin, Users, Activity, QrCode } from "lucide-react";
@@ -12,22 +12,24 @@ export default function EventDetails() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
     const res = await fetch(`/api/admin/events/${params.id}`);
     const data = await res.json();
     if (data.event) setEvent(data.event);
-  };
+  }, [params.id]);
 
-  const fetchParticipants = async () => {
+  const fetchParticipants = useCallback(async () => {
     const res = await fetch(`/api/admin/events/${params.id}/participants`);
     const data = await res.json();
     if (data.participants) setParticipants(data.participants);
-  };
+  }, [params.id]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchEvent();
+    // eslint-disable-next-line
     fetchParticipants();
-  }, [params.id]);
+  }, [fetchEvent, fetchParticipants]);
 
   if (!event) return <div className="p-8 text-center text-slate-500">Loading...</div>;
 

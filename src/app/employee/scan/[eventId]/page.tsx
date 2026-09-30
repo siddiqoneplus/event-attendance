@@ -23,10 +23,39 @@ export default function QRScanner() {
       });
   }, [params.eventId]);
 
+  const resumeScanning = () => {
+    setScanResult(null);
+    setScanning(true);
+  };
+
+  async function processScan(decodedText: string) {
+    try {
+      const res = await fetch('/api/employee/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: params.eventId,
+          scannedData: decodedText
+        })
+      });
+
+      const data = await res.json();
+      setScanResult(data);
+
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = setTimeout(() => {
+        resumeScanning();
+      }, 3000);
+
+    } catch (err: any) {
+      setScanResult({ status: 'ERROR', error: err.message });
+      setTimeout(resumeScanning, 3000);
+    }
+  }
+
   useEffect(() => {
     if (!scanning) return;
 
-    // Initialize scanner
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
       { 
@@ -41,7 +70,6 @@ export default function QRScanner() {
 
     scanner.render(
       async (decodedText) => {
-        // Stop scanning temporarily
         scanner.pause(true);
         setScanning(false);
         await processScan(decodedText);
@@ -57,37 +85,6 @@ export default function QRScanner() {
       }
     };
   }, [scanning, params.eventId]);
-
-  const processScan = async (decodedText: string) => {
-    try {
-      const res = await fetch('/api/employee/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: params.eventId,
-          scannedData: decodedText
-        })
-      });
-
-      const data = await res.json();
-      setScanResult(data);
-
-      // Auto resume after 3 seconds
-      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-      scanTimeoutRef.current = setTimeout(() => {
-        resumeScanning();
-      }, 3000);
-
-    } catch (err: any) {
-      setScanResult({ status: 'ERROR', error: err.message });
-      setTimeout(resumeScanning, 3000);
-    }
-  };
-
-  const resumeScanning = () => {
-    setScanResult(null);
-    setScanning(true);
-  };
 
   if (!event) return <div className="text-center p-8">Loading event...</div>;
 
