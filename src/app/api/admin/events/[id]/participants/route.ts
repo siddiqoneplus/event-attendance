@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     let addedCount = 0;
     
-    // Using a transaction for bulk insert
+    // Using a transaction for bulk insert with increased timeout for large CSVs
     await prisma.$transaction(async (tx) => {
       for (const row of participants) {
         // Find or create participant
@@ -62,6 +62,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           addedCount++;
         }
       }
+    }, {
+      maxWait: 10000, // default: 2000
+      timeout: 120000, // default: 5000 (increased to 2 minutes)
     });
 
     return NextResponse.json({ success: true, addedCount });
