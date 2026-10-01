@@ -23,28 +23,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     let addedCount = 0;
     
-    // Using a transaction for bulk insert with increased timeout for large CSVs
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      for (const row of participants) {
-        // Find or create participant
-        let participant = await tx.participant.findUnique({
-          where: { rollNumber: row.rollNumber }
+    // Remove the interactive transaction as it times out on MongoDB Free Tier with many sequential operations
+    for (const row of participants) {
+      try {
+        // Upsert participant (create if not exists, update if exists)
+        const participant = await prisma.participant.upsert({
+          where: { rollNumber: row.rollNumber },
+          update: {
+            name: row.name,
+            branch: row.branch,
+            section: row.section,
+          },
+          create: {
+            rollNumber: row.rollNumber,
+            name: row.name,
+            branch: row.branch,
+            section: row.section,
+            qrToken: crypto.randomBytes(16).toString('hex'),
+          }
         });
 
-        if (!participant) {
-          participant = await tx.participant.create({
-            data: {
-              rollNumber: row.rollNumber,
-              name: row.name,
-              branch: row.branch,
-              section: row.section,
-              qrToken: crypto.randomBytes(16).toString('hex'),
-            }
-          });
-        }
-
-        // Add to event if not already added
-        const existingEventParticipant = await tx.eventParticipant.findUnique({
+        // Upsert event participant link
+        const existingLink = await prisma.eventParticipant.findUnique({
           where: {
             eventId_participantId: {
               eventId: id,
@@ -53,8 +53,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           }
         });
 
-        if (!existingEventParticipant) {
-          await tx.eventParticipant.create({
+        if (!existingLink) {
+          await prisma.eventParticipant.create({
             data: {
               eventId: id,
               participantId: participant.id
@@ -62,11 +62,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           });
           addedCount++;
         }
+      } catch (err) {
+        console.error(`Failed to process row: ${row.rollNumber}`, err);
+        // Continue with the next row even if one fails
       }
-    }, {
-      maxWait: 10000, // default: 2000
-      timeout: 120000, // default: 5000 (increased to 2 minutes)
-    });
+    }
 
     return NextResponse.json({ success: true, addedCount });
   } catch (error: unknown) {
