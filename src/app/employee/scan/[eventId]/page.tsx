@@ -90,7 +90,7 @@ export default function QRScanner() {
     // Dynamically import html5-qrcode to avoid SSR issues
     const { Html5Qrcode } = await import("html5-qrcode");
 
-    const html5Qrcode = new Html5Qrcode("qr-reader-element");
+    const html5Qrcode = new Html5Qrcode("qr-reader");
     html5QrcodeRef.current = html5Qrcode;
 
     try {
@@ -163,7 +163,7 @@ export default function QRScanner() {
 
           {/* The QR reader element — always in DOM so html5-qrcode can find it */}
           <div
-            id="qr-reader-element"
+            id="qr-reader"
             className={`w-full ${cameraActive ? 'block' : 'hidden'}`}
           />
 

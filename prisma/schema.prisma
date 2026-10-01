@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   name          String
   email         String?  @unique
   username      String   @unique
@@ -19,7 +19,7 @@ model User {
 }
 
 model Event {
-  id               String   @id @default(cuid())
+  id               String   @id @default(cuid()) @map("_id")
   eventId          String   @unique // e.g. EVENT-2026-001
   name             String
   description      String?
@@ -36,7 +36,7 @@ model Event {
 }
 
 model Participant {
-  id             String   @id @default(cuid())
+  id             String   @id @default(cuid()) @map("_id")
   rollNumber     String   @unique
   name           String
   branch         String?
@@ -51,18 +51,18 @@ model Participant {
 }
 
 model EventParticipant {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   eventId       String
   participantId String
 
-  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([eventId, participantId])
 }
 
 model Attendance {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   eventId       String
   participantId String
   scannedBy     String?
@@ -71,14 +71,14 @@ model Attendance {
   scanStatus    String   @default("PRESENT") // PRESENT, ABSENT
   createdAt     DateTime @default(now())
 
-  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([eventId, participantId])
 }
 
 model AuditLog {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   userId        String?
   action        String
   eventId       String?
@@ -88,7 +88,7 @@ model AuditLog {
 }
 
 model Settings {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   key           String   @unique
   value         String
   updatedAt     DateTime @updatedAt
