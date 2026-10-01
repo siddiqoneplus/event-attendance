@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma, Participant } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       where: { eventId: id },
       include: { participant: true }
     });
-    return NextResponse.json({ participants: participants.map((p: { participant: Participant }) => p.participant) });
+    return NextResponse.json({ participants: participants.map((p: { participant: { name: string; rollNumber: string; branch: string | null; section: string | null } }) => p.participant) });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
