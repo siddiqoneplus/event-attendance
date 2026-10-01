@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (token && isAuthPage) {
-    const dashboardUrl = new URL('/dashboard', request.url);
+    const dashboardUrl = new URL('/admin/dashboard', request.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
