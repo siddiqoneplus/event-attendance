@@ -10,7 +10,6 @@ import {
   Settings, 
   LogOut, 
   Menu,
-  X,
   FileSpreadsheet
 } from "lucide-react";
 
@@ -18,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
