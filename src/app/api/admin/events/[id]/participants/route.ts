@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma, Participant } from '@prisma/client';
 import crypto from 'crypto';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,9 +10,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       where: { eventId: id },
       include: { participant: true }
     });
-    return NextResponse.json({ participants: participants.map(p => p.participant) });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ participants: participants.map((p: { participant: Participant }) => p.participant) });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -23,7 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let addedCount = 0;
     
     // Using a transaction for bulk insert with increased timeout for large CSVs
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const row of participants) {
         // Find or create participant
         let participant = await tx.participant.findUnique({
@@ -68,7 +69,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
 
     return NextResponse.json({ success: true, addedCount });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
