@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+
 import crypto from 'crypto';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
