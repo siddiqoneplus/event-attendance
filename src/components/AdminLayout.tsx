@@ -29,6 +29,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         } else {
           setUser(data.user);
         }
+      })
+      .catch(() => {
+        router.push('/login');
       });
   }, [router]);
 

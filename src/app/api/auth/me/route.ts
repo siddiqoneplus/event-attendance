@@ -13,6 +13,7 @@ export async function GET(request: Request) {
 
     const decoded = verifyToken(token);
     if (!decoded) {
+      cookieStore.delete('auth_token');
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
