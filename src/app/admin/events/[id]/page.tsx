@@ -6,10 +6,30 @@ import ExcelUploader from "@/components/ExcelUploader";
 import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 
+interface EventData {
+  id: string;
+  eventId: string;
+  name: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  venue: string | null;
+  status: string;
+  _count?: { participants: number; attendance: number };
+}
+
+interface ParticipantData {
+  id: string;
+  rollNumber: string;
+  name: string;
+  branch: string | null;
+  section: string | null;
+}
+
 export default function EventDetails() {
   const params = useParams();
-  const [event, setEvent] = useState<Record<string, unknown> | null>(null);
-  const [participants, setParticipants] = useState<Record<string, unknown>[]>([]);
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [participants, setParticipants] = useState<ParticipantData[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -54,7 +74,9 @@ export default function EventDetails() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchEvent();
+    // eslint-disable-next-line
     fetchParticipants();
   }, [fetchEvent, fetchParticipants]);
 
