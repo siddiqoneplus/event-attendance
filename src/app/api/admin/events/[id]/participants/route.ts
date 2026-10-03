@@ -23,50 +23,65 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     let addedCount = 0;
     
-    // Remove the interactive transaction as it times out on MongoDB Free Tier with many sequential operations
-    for (const row of participants) {
-      try {
-        // Upsert participant (create if not exists, update if exists)
-        const participant = await prisma.participant.upsert({
-          where: { rollNumber: row.rollNumber },
-          update: {
-            name: row.name,
-            branch: row.branch,
-            section: row.section,
-          },
-          create: {
-            rollNumber: row.rollNumber,
-            name: row.name,
-            branch: row.branch,
-            section: row.section,
-            qrToken: crypto.randomBytes(16).toString('hex'),
-          }
-        });
+    const rollNumbers = participants.map((p: any) => p.rollNumber);
 
-        // Upsert event participant link
-        const existingLink = await prisma.eventParticipant.findUnique({
-          where: {
-            eventId_participantId: {
-              eventId: id,
-              participantId: participant.id
-            }
-          }
-        });
+    // 1. Fetch existing participants
+    const existingParticipants = await prisma.participant.findMany({
+      where: { rollNumber: { in: rollNumbers } }
+    });
 
-        if (!existingLink) {
-          await prisma.eventParticipant.create({
-            data: {
-              eventId: id,
-              participantId: participant.id
-            }
-          });
-          addedCount++;
-        }
-      } catch (err) {
-        console.error(`Failed to process row: ${row.rollNumber}`, err);
-        // Continue with the next row even if one fails
-      }
+    const existingRolls = new Set(existingParticipants.map(p => p.rollNumber));
+
+    // 2. Identify new participants
+    const newParticipantsData = participants
+      .filter((p: any) => !existingRolls.has(p.rollNumber))
+      .map((p: any) => ({
+        rollNumber: p.rollNumber,
+        name: p.name,
+        branch: p.branch,
+        section: p.section,
+        qrToken: crypto.randomBytes(16).toString('hex')
+      }));
+
+    // 3. Bulk insert new participants
+    if (newParticipantsData.length > 0) {
+      await prisma.participant.createMany({
+        data: newParticipantsData
+      });
     }
+
+    // 4. Fetch all participants to get their IDs
+    const allParticipants = await prisma.participant.findMany({
+      where: { rollNumber: { in: rollNumbers } },
+      select: { id: true, rollNumber: true }
+    });
+
+    // 5. Fetch existing event links
+    const existingLinks = await prisma.eventParticipant.findMany({
+      where: {
+        eventId: id,
+        participantId: { in: allParticipants.map(p => p.id) }
+      },
+      select: { participantId: true }
+    });
+
+    const existingLinkSet = new Set(existingLinks.map(l => l.participantId));
+
+    // 6. Bulk insert missing event links
+    const newLinksData = allParticipants
+      .filter(p => !existingLinkSet.has(p.id))
+      .map(p => ({
+        eventId: id,
+        participantId: p.id
+      }));
+
+    if (newLinksData.length > 0) {
+      await prisma.eventParticipant.createMany({
+        data: newLinksData
+      });
+    }
+    
+    addedCount = newLinksData.length;
 
     return NextResponse.json({ success: true, addedCount });
   } catch (error: unknown) {
