@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2 } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 interface EventData {
@@ -34,6 +34,7 @@ export default function EventDetails() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addingParticipant, setAddingParticipant] = useState(false);
+  const [stoppingEvent, setStoppingEvent] = useState(false);
   const [modalError, setModalError] = useState("");
   const [modalSuccess, setModalSuccess] = useState("");
   const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
@@ -49,6 +50,23 @@ export default function EventDetails() {
     const data = await res.json();
     if (data.participants) setParticipants(data.participants);
   }, [params.id]);
+
+  const handleStopEvent = async () => {
+    if (!confirm(`Stop "${event?.name}"? Employees will no longer see this event.`)) return;
+    setStoppingEvent(true);
+    try {
+      const res = await fetch(`/api/admin/events/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COMPLETED' })
+      });
+      if (res.ok) {
+        await fetchEvent();
+      }
+    } finally {
+      setStoppingEvent(false);
+    }
+  };
 
   const handleAddParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,8 +130,12 @@ export default function EventDetails() {
             <span className="px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-bold rounded-md">
               {event.eventId}
             </span>
-            <span className={`px-2.5 py-1 text-xs font-bold rounded-md ${event.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-              {event.status}
+            <span className={`px-2.5 py-1 text-xs font-bold rounded-md ${
+              event.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+              event.status === 'COMPLETED' ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' :
+              'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+            }`}>
+              {event.status === 'COMPLETED' ? '⏹ Stopped' : event.status}
             </span>
           </div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{event.name}</h1>
@@ -122,6 +144,36 @@ export default function EventDetails() {
             <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {event.venue || 'TBA'}</span>
           </div>
         </div>
+
+        {/* Stop event button — only shown if ACTIVE */}
+        {event.status === 'ACTIVE' && (
+          <button
+            onClick={handleStopEvent}
+            disabled={stoppingEvent}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-70 shadow-lg shadow-red-500/20 flex-shrink-0"
+          >
+            {stoppingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : <StopCircle className="w-4 h-4" />}
+            {stoppingEvent ? 'Stopping...' : 'Stop Event'}
+          </button>
+        )}
+
+        {/* Restart button if stopped */}
+        {event.status === 'COMPLETED' && (
+          <button
+            onClick={async () => {
+              if (!confirm('Reactivate this event? Employees will be able to scan again.')) return;
+              await fetch(`/api/admin/events/${params.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'ACTIVE' })
+              });
+              await fetchEvent();
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-green-500/20 flex-shrink-0"
+          >
+            <CheckCircle2 className="w-4 h-4" /> Reactivate Event
+          </button>
+        )}
       </div>
 
       {/* Tabs */}

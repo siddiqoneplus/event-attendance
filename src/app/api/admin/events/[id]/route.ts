@@ -28,22 +28,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const data = await request.json();
     
+    // Only update fields that are explicitly provided
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.date !== undefined) updateData.date = data.date;
+    if (data.startTime !== undefined) updateData.startTime = data.startTime;
+    if (data.endTime !== undefined) updateData.endTime = data.endTime;
+    if (data.venue !== undefined) updateData.venue = data.venue;
+    if (data.status !== undefined) updateData.status = data.status;
+    
     const event = await prisma.event.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        date: data.date,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        venue: data.venue,
-        status: data.status,
-      }
+      data: updateData
     });
 
     return NextResponse.json({ event });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
