@@ -34,6 +34,8 @@ export default function EventDetails() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addingParticipant, setAddingParticipant] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [modalSuccess, setModalSuccess] = useState("");
   const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
 
   const fetchEvent = useCallback(async () => {
@@ -51,6 +53,8 @@ export default function EventDetails() {
   const handleAddParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddingParticipant(true);
+    setModalError("");
+    setModalSuccess("");
     try {
       const res = await fetch(`/api/admin/events/${params.id}/participants`, {
         method: "POST",
@@ -64,24 +68,31 @@ export default function EventDetails() {
           }] 
         })
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        setIsAddModalOpen(false);
-        setNewParticipant({ rollNumber: "", name: "", branch: "", section: "" });
-        fetchEvent();
-        fetchParticipants();
         if (data.addedCount === 0) {
-          alert("This participant is already registered for this event.");
+          setModalError(`"${newParticipant.rollNumber.trim().toUpperCase()}" is already registered for this event.`);
+        } else {
+          setModalSuccess(`✓ ${newParticipant.name.trim()} added successfully!`);
+          setNewParticipant({ rollNumber: "", name: "", branch: "", section: "" });
+          fetchEvent();
+          fetchParticipants();
         }
       } else {
-        const data = await res.json();
-        alert(data.error);
+        setModalError(data.error || "Failed to add participant. Please try again.");
       }
     } catch {
-      alert("Failed to add participant. Please try again.");
+      setModalError("Network error. Please check your connection and try again.");
     } finally {
       setAddingParticipant(false);
     }
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setModalError("");
+    setModalSuccess("");
+    setNewParticipant({ rollNumber: "", name: "", branch: "", section: "" });
   };
 
   useEffect(() => {
@@ -216,10 +227,26 @@ export default function EventDetails() {
                 <UserPlus className="w-5 h-5 text-blue-500" />
                 Add Participant
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+              <button onClick={closeAddModal} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
+
+            {/* Inline success banner */}
+            {modalSuccess && (
+              <div className="mx-5 mt-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl flex items-center gap-2 text-green-700 dark:text-green-300 text-sm font-medium">
+                {modalSuccess}
+                <button onClick={() => setModalSuccess("")} className="ml-auto text-green-500 hover:text-green-700"><X className="w-4 h-4" /></button>
+              </div>
+            )}
+
+            {/* Inline error banner */}
+            {modalError && (
+              <div className="mx-5 mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl flex items-center gap-2 text-red-700 dark:text-red-300 text-sm">
+                {modalError}
+                <button onClick={() => setModalError("")} className="ml-auto text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+              </div>
+            )}
             
             <form onSubmit={handleAddParticipant} className="p-5 space-y-4">
               <div className="space-y-1">
@@ -227,7 +254,7 @@ export default function EventDetails() {
                 <input 
                   type="text" required
                   value={newParticipant.rollNumber}
-                  onChange={e => setNewParticipant({...newParticipant, rollNumber: e.target.value})}
+                  onChange={e => { setNewParticipant({...newParticipant, rollNumber: e.target.value}); setModalError(""); setModalSuccess(""); }}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. 21A91A0501"
                 />
@@ -267,9 +294,9 @@ export default function EventDetails() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-                  Cancel
+              <div className="pt-2 flex justify-end gap-3">
+                <button type="button" onClick={closeAddModal} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                  Done
                 </button>
                 <button type="submit" disabled={addingParticipant || !newParticipant.rollNumber || !newParticipant.name} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-70 flex items-center gap-2">
                   {addingParticipant ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Participant"}
