@@ -9,7 +9,6 @@ interface UserItem {
 
 export default function UsersList() {
   const [users, setUsers] = useState<UserItem[]>([]);
-  const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'EMPLOYEE' });
