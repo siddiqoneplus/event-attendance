@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Users, Activity, QrCode } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function EventDetails() {
@@ -11,6 +11,10 @@ export default function EventDetails() {
   const [event, setEvent] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addingParticipant, setAddingParticipant] = useState(false);
+  const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
 
   const fetchEvent = useCallback(async () => {
     const res = await fetch(`/api/admin/events/${params.id}`);
@@ -23,6 +27,31 @@ export default function EventDetails() {
     const data = await res.json();
     if (data.participants) setParticipants(data.participants);
   }, [params.id]);
+
+  const handleAddParticipant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingParticipant(true);
+    try {
+      const res = await fetch(`/api/admin/events/${params.id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participants: [newParticipant] })
+      });
+      if (res.ok) {
+        setIsAddModalOpen(false);
+        setNewParticipant({ rollNumber: "", name: "", branch: "", section: "" });
+        fetchEvent();
+        fetchParticipants();
+      } else {
+        const data = await res.json();
+        alert(data.error);
+      }
+    } catch (err) {
+      alert("Failed to add participant");
+    } finally {
+      setAddingParticipant(false);
+    }
+  };
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -98,8 +127,14 @@ export default function EventDetails() {
             <ExcelUploader eventId={event.id} onUploadSuccess={() => { fetchEvent(); fetchParticipants(); }} />
             
             <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 flex justify-between items-center">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <h3 className="font-semibold text-slate-900 dark:text-white">Authorized Participants ({participants.length})</h3>
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" /> Add Member Manually
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -141,6 +176,79 @@ export default function EventDetails() {
           </div>
         )}
       </div>
+
+      {/* Add Participant Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-blue-500" />
+                Add Participant
+              </h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddParticipant} className="p-5 space-y-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Roll Number <span className="text-red-500">*</span></label>
+                <input 
+                  type="text" required
+                  value={newParticipant.rollNumber}
+                  onChange={e => setNewParticipant({...newParticipant, rollNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. 21A91A0501"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Full Name <span className="text-red-500">*</span></label>
+                <input 
+                  type="text" required
+                  value={newParticipant.name}
+                  onChange={e => setNewParticipant({...newParticipant, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch</label>
+                  <input 
+                    type="text"
+                    value={newParticipant.branch}
+                    onChange={e => setNewParticipant({...newParticipant, branch: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. CSE"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Section</label>
+                  <input 
+                    type="text"
+                    value={newParticipant.section}
+                    onChange={e => setNewParticipant({...newParticipant, section: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. A"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={addingParticipant || !newParticipant.rollNumber || !newParticipant.name} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-70 flex items-center gap-2">
+                  {addingParticipant ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Participant"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
