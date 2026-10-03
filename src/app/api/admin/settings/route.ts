@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const settings = await prisma.settings.findMany();
-    const settingsObj = settings.reduce((acc: Record<string, unknown>, s) => {
+    const settingsObj = settings.reduce((acc: Record<string, unknown>, s: { key: string; value: string }) => {
       try { acc[s.key] = JSON.parse(s.value); } catch { acc[s.key] = s.value; }
       return acc;
     }, {});
