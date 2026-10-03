@@ -16,26 +16,34 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
+interface CsvParticipant {
+  rollNumber: string;
+  name: string;
+  branch: string | null;
+  section: string | null;
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { participants } = await request.json();
+    const body = await request.json();
+    const participants: CsvParticipant[] = body.participants;
 
     let addedCount = 0;
     
-    const rollNumbers = participants.map((p: any) => p.rollNumber);
+    const rollNumbers = participants.map((p: CsvParticipant) => p.rollNumber);
 
     // 1. Fetch existing participants
     const existingParticipants = await prisma.participant.findMany({
       where: { rollNumber: { in: rollNumbers } }
     });
 
-    const existingRolls = new Set(existingParticipants.map(p => p.rollNumber));
+    const existingRolls = new Set(existingParticipants.map((p: { rollNumber: string }) => p.rollNumber));
 
     // 2. Identify new participants
     const newParticipantsData = participants
-      .filter((p: any) => !existingRolls.has(p.rollNumber))
-      .map((p: any) => ({
+      .filter((p: CsvParticipant) => !existingRolls.has(p.rollNumber))
+      .map((p: CsvParticipant) => ({
         rollNumber: p.rollNumber,
         name: p.name,
         branch: p.branch,
@@ -60,17 +68,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const existingLinks = await prisma.eventParticipant.findMany({
       where: {
         eventId: id,
-        participantId: { in: allParticipants.map(p => p.id) }
+        participantId: { in: allParticipants.map((p: { id: string }) => p.id) }
       },
       select: { participantId: true }
     });
 
-    const existingLinkSet = new Set(existingLinks.map(l => l.participantId));
+    const existingLinkSet = new Set(existingLinks.map((l: { participantId: string }) => l.participantId));
 
     // 6. Bulk insert missing event links
     const newLinksData = allParticipants
-      .filter(p => !existingLinkSet.has(p.id))
-      .map(p => ({
+      .filter((p: { id: string }) => !existingLinkSet.has(p.id))
+      .map((p: { id: string }) => ({
         eventId: id,
         participantId: p.id
       }));
