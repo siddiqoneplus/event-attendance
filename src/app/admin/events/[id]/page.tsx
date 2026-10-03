@@ -8,8 +8,8 @@ import Link from "next/link";
 
 export default function EventDetails() {
   const params = useParams();
-  const [event, setEvent] = useState<any>(null);
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [event, setEvent] = useState<Record<string, unknown> | null>(null);
+  const [participants, setParticipants] = useState<Record<string, unknown>[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -46,7 +46,7 @@ export default function EventDetails() {
         const data = await res.json();
         alert(data.error);
       }
-    } catch (err) {
+    } catch {
       alert("Failed to add participant");
     } finally {
       setAddingParticipant(false);
@@ -54,9 +54,7 @@ export default function EventDetails() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line
     fetchEvent();
-    // eslint-disable-next-line
     fetchParticipants();
   }, [fetchEvent, fetchParticipants]);
 
