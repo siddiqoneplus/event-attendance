@@ -76,7 +76,6 @@ export default function EventDetails() {
   useEffect(() => {
     // eslint-disable-next-line
     fetchEvent();
-    // eslint-disable-next-line
     fetchParticipants();
   }, [fetchEvent, fetchParticipants]);
 
