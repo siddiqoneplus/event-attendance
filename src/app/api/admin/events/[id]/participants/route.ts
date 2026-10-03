@@ -27,7 +27,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const body = await request.json();
-    const participants: CsvParticipant[] = body.participants;
+    const rawParticipants: CsvParticipant[] = body.participants;
+    
+    // Sanitize and normalize all incoming participants
+    const participants = rawParticipants.map(p => ({
+      rollNumber: p.rollNumber.trim().toUpperCase(),
+      name: p.name.trim(),
+      branch: p.branch?.trim() || null,
+      section: p.section?.trim() || null
+    })).filter(p => p.rollNumber && p.name);
 
     let addedCount = 0;
     

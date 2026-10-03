@@ -55,19 +55,30 @@ export default function EventDetails() {
       const res = await fetch(`/api/admin/events/${params.id}/participants`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ participants: [newParticipant] })
+        body: JSON.stringify({ 
+          participants: [{
+            rollNumber: newParticipant.rollNumber.trim().toUpperCase(),
+            name: newParticipant.name.trim(),
+            branch: newParticipant.branch.trim() || null,
+            section: newParticipant.section.trim() || null
+          }] 
+        })
       });
       if (res.ok) {
+        const data = await res.json();
         setIsAddModalOpen(false);
         setNewParticipant({ rollNumber: "", name: "", branch: "", section: "" });
         fetchEvent();
         fetchParticipants();
+        if (data.addedCount === 0) {
+          alert("This participant is already registered for this event.");
+        }
       } else {
         const data = await res.json();
         alert(data.error);
       }
     } catch {
-      alert("Failed to add participant");
+      alert("Failed to add participant. Please try again.");
     } finally {
       setAddingParticipant(false);
     }
