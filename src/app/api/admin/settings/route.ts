@@ -4,14 +4,14 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const settings = await prisma.settings.findMany();
-    const settingsObj = settings.reduce((acc, s) => {
-      acc[s.key] = JSON.parse(s.value);
+    const settingsObj = settings.reduce((acc: Record<string, unknown>, s) => {
+      try { acc[s.key] = JSON.parse(s.value); } catch { acc[s.key] = s.value; }
       return acc;
-    }, {} as any);
+    }, {});
     
     return NextResponse.json({ settings: settingsObj.rollNumberConfig || null });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { calculateStudentYear, type RollNumberConfig } from "@/lib/rollNumber";
 
 export default function RollNumberSettings() {
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<RollNumberConfig>({
     pattern: "^\\d{2}[A-Z0-9]+$",
     yearIndexStart: 0,
     yearIndexEnd: 2,
@@ -13,6 +14,7 @@ export default function RollNumberSettings() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [testRoll, setTestRoll] = useState("23A81A0501");
 
   useEffect(() => {
     fetch('/api/admin/settings')
@@ -37,12 +39,15 @@ export default function RollNumberSettings() {
       });
       if (!res.ok) throw new Error("Failed to save settings");
       setMessage({ type: "success", text: "Settings saved successfully!" });
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+    } catch (err: unknown) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setLoading(false);
     }
   };
+
+  // Live calculation using the shared utility
+  const testResult = calculateStudentYear(testRoll, settings);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -103,7 +108,7 @@ export default function RollNumberSettings() {
                 onChange={e => setSettings({...settings, currentAcademicYear: parseInt(e.target.value)})}
                 className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-slate-500">E.g., 2026. Used to calculate student's current year (1st, 2nd, etc).</p>
+              <p className="text-xs text-slate-500">E.g., 2026. Used to calculate student&apos;s current year (1st, 2nd, etc).</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Max Duration (Years)</label>
@@ -117,14 +122,51 @@ export default function RollNumberSettings() {
             </div>
           </div>
 
+          {/* Live Calculation Test */}
           <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl mb-6 border border-slate-200 dark:border-slate-700">
-              <h4 className="text-sm font-semibold mb-2">Calculation Test</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                A student with roll number <strong>23A81A0501</strong> will have admission year <strong>2023</strong>.<br/>
-                Current year is {settings.currentAcademicYear}.<br/>
-                Student is in: <strong className="text-blue-600 dark:text-blue-400">{Math.min(settings.maxYears, Math.max(1, settings.currentAcademicYear - 2023))} Year</strong>
-              </p>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl mb-6 border border-slate-200 dark:border-slate-700 space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Calculation Test</h4>
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Test Roll Number</label>
+                <input
+                  type="text"
+                  value={testRoll}
+                  onChange={e => setTestRoll(e.target.value.toUpperCase())}
+                  className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. 23A81A0501"
+                />
+              </div>
+
+              <div className={`rounded-lg p-3 text-sm ${testResult.valid ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
+                {testResult.valid ? (
+                  <>
+                    <p>Roll Number: <strong className="font-mono">{testRoll}</strong></p>
+                    <p>Admission Year: <strong>{testResult.admissionYear}</strong></p>
+                    <p>Current Academic Year: <strong>{settings.currentAcademicYear}</strong></p>
+                    <p>Formula: {settings.currentAcademicYear} − {testResult.admissionYear} + 1 = <strong>{testResult.studentYear}</strong></p>
+                    <p className="mt-1">Student is in: <strong className="text-blue-600 dark:text-blue-400 text-base">{testResult.label}</strong></p>
+                  </>
+                ) : (
+                  <p><AlertCircle className="inline w-4 h-4 mr-1" />{testResult.error || testResult.label}</p>
+                )}
+              </div>
+
+              {/* Quick reference table */}
+              <div className="mt-2">
+                <p className="text-xs font-medium text-slate-500 mb-1">Quick Reference (Academic Year {settings.currentAcademicYear}):</p>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  {Array.from({ length: settings.maxYears }, (_, i) => {
+                    const admYear = settings.currentAcademicYear - i;
+                    const r = calculateStudentYear(`${String(admYear).slice(2)}A00A0000`, settings);
+                    return (
+                      <div key={admYear} className="flex justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500">Admission {admYear}</span>
+                        <strong className="text-slate-800 dark:text-slate-200">{r.label}</strong>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <button 

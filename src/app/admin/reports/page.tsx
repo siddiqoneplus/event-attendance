@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { FileSpreadsheet, CalendarDays } from "lucide-react";
+import { calculateStudentYear, type RollNumberConfig, DEFAULT_CONFIG } from "@/lib/rollNumber";
 
 interface EventItem {
   id: string;
@@ -15,6 +16,7 @@ export default function Reports() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [rollConfig, setRollConfig] = useState<RollNumberConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
     fetch('/api/admin/events')
@@ -22,6 +24,12 @@ export default function Reports() {
       .then(data => {
         setEvents(data.events || []);
         setLoading(false);
+      });
+    // Load roll number config for year calculation
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.settings) setRollConfig(prev => ({ ...prev, ...data.settings }));
       });
   }, []);
 
@@ -53,12 +61,15 @@ export default function Reports() {
         academicYear?: string | null;
       }) => {
         const attendance = attendanceMap.get(p.id);
+        // Use shared utility for consistent year calculation
+        const yearResult = calculateStudentYear(p.rollNumber, rollConfig);
+        const yearLabel = yearResult.valid ? yearResult.label : (p.admissionYear ? `${p.admissionYear}` : '-');
         return {
           "Roll Number": p.rollNumber,
           "Name": p.name,
           "Branch": p.branch || "-",
           "Section": p.section || "-",
-          "Year": p.admissionYear || p.academicYear || "-",
+          "Year": yearLabel,
           "Attendance Status": attendance ? "Present" : "Absent",
           "Date": attendance ? new Date(attendance.attendanceTime).toLocaleDateString() : "-",
           "Time": attendance ? new Date(attendance.attendanceTime).toLocaleTimeString() : "-",
