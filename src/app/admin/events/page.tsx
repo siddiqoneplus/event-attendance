@@ -4,8 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Calendar, MapPin, Users, Activity } from "lucide-react";
 
+interface EventItem {
+  id: string; eventId: string; name: string; date: string; startTime: string;
+  endTime: string; venue: string | null; status: string;
+  _count?: { participants: number; attendance: number };
+}
+
 export default function EventsList() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

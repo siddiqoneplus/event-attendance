@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, MapPin, QrCode } from "lucide-react";
 
+interface ActiveEvent {
+  id: string; eventId: string; name: string; date: string;
+  startTime: string; endTime: string; venue: string | null; status: string;
+}
+
 export default function EmployeeDashboard() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<ActiveEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,7 +18,7 @@ export default function EmployeeDashboard() {
       .then(res => res.json())
       .then(data => {
         // Filter to only ACTIVE events for employees
-        const activeEvents = (data.events || []).filter((e: any) => e.status === 'ACTIVE');
+        const activeEvents = (data.events || []).filter((e: ActiveEvent) => e.status === 'ACTIVE');
         setEvents(activeEvents);
         setLoading(false);
       });

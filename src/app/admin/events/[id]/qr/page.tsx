@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+
+interface QrEvent { id: string; name: string; }
+interface QrParticipant { id: string; rollNumber: string; name: string; branch: string | null; section: string | null; }
 
 export default function QRGenerator() {
   const params = useParams();
-  const [event, setEvent] = useState<any>(null);
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [event, setEvent] = useState<QrEvent | null>(null);
+  const [participants, setParticipants] = useState<QrParticipant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

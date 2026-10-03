@@ -6,9 +6,23 @@ import Link from "next/link";
 import { ArrowLeft, Users, CheckCircle2, XCircle, Activity, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+interface RecentScan {
+  id: string;
+  attendanceTime: string;
+  participant: { name: string; rollNumber: string; branch: string | null; section: string | null };
+}
+
+interface LiveData {
+  event: { name: string };
+  registered: number;
+  present: number;
+  absent: number;
+  recentScans: RecentScan[];
+}
+
 export default function LiveDashboard() {
   const params = useParams();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<LiveData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isPolling, setIsPolling] = useState(true);
 
@@ -111,7 +125,7 @@ export default function LiveDashboard() {
             <div className="p-8 text-center text-slate-500">No attendance recorded yet.</div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.recentScans.map((scan: any) => (
+              {data.recentScans.map((scan: RecentScan) => (
                 <div key={scan.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors animate-fade-in">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">

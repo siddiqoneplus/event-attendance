@@ -4,8 +4,16 @@ import { useEffect, useState } from "react";
 import { Users, CalendarCheck, CalendarDays, Activity, Percent } from "lucide-react";
 import Link from "next/link";
 
+interface DashboardStats {
+  totalEvents: number;
+  activeEvents: number;
+  totalParticipants: number;
+  todaysAttendance: number;
+  attendancePercentage: number;
+}
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/stats')
@@ -25,7 +33,7 @@ export default function AdminDashboard() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard Overview</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Welcome back. Here's what's happening today.</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Welcome back. Here&apos;s what&apos;s happening today.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

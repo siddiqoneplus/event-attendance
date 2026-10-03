@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Shield, Briefcase, Plus } from "lucide-react";
+import { Shield, Briefcase, Plus } from "lucide-react";
+
+interface UserItem {
+  id: string; name: string; username: string; email: string | null; role: string; status: string;
+}
 
 export default function UsersList() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -34,8 +34,8 @@ export default function LoginForm() {
       } else {
         router.push("/employee/dashboard");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }

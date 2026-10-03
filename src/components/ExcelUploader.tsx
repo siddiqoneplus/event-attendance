@@ -6,7 +6,7 @@ import { Upload, FileSpreadsheet, X, Check, AlertCircle } from "lucide-react";
 
 export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: string, onUploadSuccess: () => void }) {
   const [file, setFile] = useState<File | null>(null);
-  const [dataPreview, setDataPreview] = useState<any[]>([]);
+  const [dataPreview, setDataPreview] = useState<Record<string, unknown>[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   
   const [mapping, setMapping] = useState<{ [key: string]: string }>({
@@ -41,9 +41,9 @@ export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: s
         const headers = data[0] as string[];
         setColumns(headers);
         
-        const preview = data.slice(1, 6).map((row: any) => {
-          let obj: any = {};
-          headers.forEach((h, i) => obj[h] = row[i]);
+        const preview = (data.slice(1, 6) as unknown[][]).map((row) => {
+          const obj: Record<string, unknown> = {};
+          headers.forEach((h, i) => { obj[h] = row[i]; });
           return obj;
         });
         
@@ -60,8 +60,8 @@ export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: s
         });
         setMapping(newMapping);
 
-      } catch (err: any) {
-        setError("Error parsing Excel: " + err.message);
+      } catch (err: unknown) {
+        setError("Error parsing Excel: " + (err instanceof Error ? err.message : String(err)));
       }
     };
     reader.readAsBinaryString(file);
@@ -85,9 +85,9 @@ export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: s
 
       const wb = XLSX.read(bstr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawData = XLSX.utils.sheet_to_json(ws);
+      const rawData = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
 
-      const participants = rawData.map((row: any) => ({
+      const participants = rawData.map((row) => ({
         rollNumber: String(row[mapping.rollNumber] || "").trim(),
         name: String(row[mapping.name] || "").trim(),
         branch: mapping.branch ? String(row[mapping.branch] || "").trim() : null,
@@ -109,8 +109,8 @@ export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: s
       setFile(null);
       setDataPreview([]);
       onUploadSuccess();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setLoading(false);
     }
