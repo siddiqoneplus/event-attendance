@@ -193,7 +193,7 @@ export default function ExcelUploader({ eventId, onUploadSuccess }: { eventId: s
                 <tbody>
                   {dataPreview.map((row, i) => (
                     <tr key={i} className="border-b dark:border-slate-700 last:border-0">
-                      {columns.map(c => <td key={c} className="p-2 text-slate-600 dark:text-slate-400">{row[c]}</td>)}
+                      {columns.map(c => <td key={c} className="p-2 text-slate-600 dark:text-slate-400">{String(row[c] || "")}</td>)}
                     </tr>
                   ))}
                 </tbody>
