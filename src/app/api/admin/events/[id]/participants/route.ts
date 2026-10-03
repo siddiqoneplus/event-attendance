@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       where: { eventId: id },
       include: { participant: true }
     });
-    return NextResponse.json({ participants: participants.map((p: { participant: { name: string; rollNumber: string; branch: string | null; section: string | null } }) => p.participant) });
+    return NextResponse.json({ participants: participants.map((p: { participant: { id: string; name: string; rollNumber: string; branch: string | null; section: string | null; admissionYear: number | null; academicYear: string | null } }) => p.participant) });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }

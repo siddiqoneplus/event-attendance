@@ -21,26 +21,37 @@ export default function Reports() {
   const exportAttendance = async (eventId: string, eventName: string) => {
     setExportingId(eventId);
     try {
-      // Fetch full attendance data
-      const res = await fetch(`/api/admin/events/${eventId}/live`);
-      const data = await res.json();
+      // Fetch ALL attendance records (no limit)
+      const [resAttendance, resParticipants] = await Promise.all([
+        fetch(`/api/admin/events/${eventId}/attendance`),
+        fetch(`/api/admin/events/${eventId}/participants`)
+      ]);
       
-      const resParticipants = await fetch(`/api/admin/events/${eventId}/participants`);
+      const dataAttendance = await resAttendance.json();
       const dataParticipants = await resParticipants.json();
       
-      // Combine data
-      const attendanceMap = new Map();
-      data.recentScans.forEach((scan: any) => {
+      // Build attendance lookup by participantId
+      const attendanceMap = new Map<string, { attendanceTime: string }>();
+      (dataAttendance.attendance || []).forEach((scan: { participantId: string; attendanceTime: string }) => {
         attendanceMap.set(scan.participantId, scan);
       });
 
-      const exportData = dataParticipants.participants.map((p: any) => {
+      const exportData = (dataParticipants.participants || []).map((p: {
+        id: string;
+        rollNumber: string;
+        name: string;
+        branch: string | null;
+        section: string | null;
+        admissionYear?: number | null;
+        academicYear?: string | null;
+      }) => {
         const attendance = attendanceMap.get(p.id);
         return {
           "Roll Number": p.rollNumber,
           "Name": p.name,
           "Branch": p.branch || "-",
           "Section": p.section || "-",
+          "Year": p.admissionYear || p.academicYear || "-",
           "Attendance Status": attendance ? "Present" : "Absent",
           "Date": attendance ? new Date(attendance.attendanceTime).toLocaleDateString() : "-",
           "Time": attendance ? new Date(attendance.attendanceTime).toLocaleTimeString() : "-",
