@@ -161,10 +161,11 @@ export default function QRScanner() {
         {/* Camera / Scanner area */}
         <div className="relative bg-black min-h-[320px] flex items-center justify-center">
 
-          {/* The QR reader element — always in DOM so html5-qrcode can find it */}
+          {/* The QR reader element — always visible to DOM for dimension calculation but visually hidden when inactive */}
           <div
             id="qr-reader"
-            className={`w-full ${cameraActive ? 'block' : 'hidden'}`}
+            className="w-full absolute inset-0"
+            style={{ opacity: cameraActive ? 1 : 0, zIndex: cameraActive ? 10 : -1, pointerEvents: cameraActive ? 'auto' : 'none' }}
           />
 
           {/* Idle state: show start button */}
