@@ -27,6 +27,9 @@ interface ScanResult {
   participant?: ScanParticipant;
 }
 
+const RESULT_DISPLAY_MS = 3000; // auto-clear result after 3 seconds
+const DEBOUNCE_MS = 2500;       // ignore re-scans of same QR within 2.5s
+
 export default function QRScanner() {
   const params = useParams();
   const [event, setEvent] = useState<EventData | null>(null);
@@ -34,79 +37,72 @@ export default function QRScanner() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
-  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resultTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScannedRef = useRef<string>("");
+  const lastScannedTimeRef = useRef<number>(0);
 
   useEffect(() => {
     fetch(`/api/admin/events/${params.eventId}`)
       .then(res => res.json())
-      .then(data => {
-        if (data.event) setEvent(data.event);
-      });
+      .then(data => { if (data.event) setEvent(data.event); });
   }, [params.eventId]);
+
+  const showResult = useCallback((result: ScanResult) => {
+    setScanResult(result);
+    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+    resultTimerRef.current = setTimeout(() => setScanResult(null), RESULT_DISPLAY_MS);
+  }, []);
+
+  const processScan = useCallback(async (decodedText: string) => {
+    const now = Date.now();
+    // Debounce: skip if same QR scanned too recently
+    if (decodedText === lastScannedRef.current && now - lastScannedTimeRef.current < DEBOUNCE_MS) return;
+    if (processing) return;
+
+    lastScannedRef.current = decodedText;
+    lastScannedTimeRef.current = now;
+    setProcessing(true);
+
+    try {
+      const res = await fetch('/api/employee/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: params.eventId, scannedData: decodedText })
+      });
+      const data = await res.json();
+      showResult(data);
+    } catch (err: unknown) {
+      showResult({ status: 'ERROR', error: err instanceof Error ? err.message : 'Scan failed' });
+    } finally {
+      setProcessing(false);
+    }
+  }, [params.eventId, processing, showResult]);
 
   const stopCamera = useCallback(async () => {
     if (html5QrcodeRef.current) {
       try {
         await html5QrcodeRef.current.stop();
         html5QrcodeRef.current.clear();
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
       html5QrcodeRef.current = null;
     }
     setCameraActive(false);
   }, []);
 
-  const processScan = useCallback(async (decodedText: string) => {
-    if (processing) return;
-    setProcessing(true);
-
-    // Stop camera while processing
-    await stopCamera();
-
-    try {
-      const res = await fetch('/api/employee/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: params.eventId,
-          scannedData: decodedText
-        })
-      });
-      const data = await res.json();
-      setScanResult(data);
-    } catch (err: unknown) {
-      setScanResult({ status: 'ERROR', error: err instanceof Error ? err.message : 'Unknown error' });
-    } finally {
-      setProcessing(false);
-    }
-  }, [params.eventId, processing, stopCamera]);
-
   const startCamera = useCallback(async () => {
     setCameraError(null);
-    setScanResult(null);
-
-    // Dynamically import html5-qrcode to avoid SSR issues
     const { Html5Qrcode } = await import("html5-qrcode");
-
     const html5Qrcode = new Html5Qrcode("qr-reader");
     html5QrcodeRef.current = html5Qrcode;
 
     try {
       await html5Qrcode.start(
         { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-        },
-        (decodedText) => {
-          processScan(decodedText);
-        },
-        () => {
-          // QR not found yet, ignore
-        }
+        { fps: 15, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
+        (decodedText) => processScan(decodedText),
+        () => { /* scanning, not found yet — ignore */ }
       );
       setCameraActive(true);
     } catch (err: unknown) {
@@ -122,17 +118,11 @@ export default function QRScanner() {
     }
   }, [processScan]);
 
-  const handleScanNext = useCallback(() => {
-    setScanResult(null);
-    startCamera();
-  }, [startCamera]);
-
   // Cleanup on unmount
   useEffect(() => {
-    const timeoutRef = scanTimeoutRef;
     return () => {
       stopCamera();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
     };
   }, [stopCamera]);
 
@@ -152,31 +142,32 @@ export default function QRScanner() {
         {/* Header */}
         <div className="bg-slate-900 text-white p-4 text-center border-b border-slate-800">
           <h2 className="font-bold truncate">{event.name}</h2>
-          <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1">
-            <span className={`w-2 h-2 rounded-full ${event.status === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+          <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${event.status === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
             {event.status}
+            {processing && <span className="ml-2 text-blue-400 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Processing...</span>}
           </p>
         </div>
 
-        {/* Camera / Scanner area */}
-        <div className="relative bg-black min-h-[320px] flex items-center justify-center">
+        {/* Camera viewport */}
+        <div className="relative bg-black" style={{ minHeight: 300 }}>
 
-          {/* The QR reader element — always visible to DOM for dimension calculation but visually hidden when inactive */}
+          {/* QR reader — always in DOM, visible only when active */}
           <div
             id="qr-reader"
             className="w-full absolute inset-0"
             style={{ opacity: cameraActive ? 1 : 0, zIndex: cameraActive ? 10 : -1, pointerEvents: cameraActive ? 'auto' : 'none' }}
           />
 
-          {/* Idle state: show start button */}
-          {!cameraActive && !processing && !scanResult && (
-            <div className="flex flex-col items-center gap-4 p-8 text-white text-center">
+          {/* Idle / start screen */}
+          {!cameraActive && (
+            <div className="flex flex-col items-center gap-4 p-8 text-white text-center" style={{ minHeight: 300, justifyContent: 'center' }}>
               <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
                 <Camera className="w-10 h-10 text-white" />
               </div>
               <div>
                 <p className="font-semibold text-lg">Ready to Scan</p>
-                <p className="text-sm text-slate-400 mt-1">Point camera at participant&apos;s QR code</p>
+                <p className="text-sm text-slate-400 mt-1">Tap below to start the camera</p>
               </div>
               {cameraError && (
                 <div className="bg-red-900/50 border border-red-700 text-red-200 text-sm rounded-xl p-3 max-w-xs">
@@ -187,61 +178,42 @@ export default function QRScanner() {
                 onClick={startCamera}
                 className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all shadow-lg"
               >
-                <Camera className="w-5 h-5" />
-                Start Camera
+                <Camera className="w-5 h-5" /> Start Camera
               </button>
             </div>
           )}
+        </div>
 
-          {/* Processing spinner */}
-          {processing && (
-            <div className="flex flex-col items-center gap-3 text-white">
-              <RefreshCw className="w-10 h-10 animate-spin text-blue-400" />
-              <p className="text-sm text-slate-300">Processing...</p>
-            </div>
-          )}
-
-          {/* Result Overlay */}
+        {/* Result banner — below camera, auto-dismisses */}
+        <div className={`transition-all duration-300 overflow-hidden ${scanResult ? 'max-h-40' : 'max-h-0'}`}>
           {scanResult && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-50 ${
-              scanResult.status === 'SUCCESS' ? 'bg-green-900/95 text-green-50' :
-              scanResult.status === 'DUPLICATE' ? 'bg-yellow-900/95 text-yellow-50' :
-              'bg-red-900/95 text-red-50'
+            <div className={`p-4 flex items-start gap-3 ${
+              scanResult.status === 'SUCCESS' ? 'bg-green-600 text-white' :
+              scanResult.status === 'DUPLICATE' ? 'bg-yellow-500 text-white' :
+              'bg-red-600 text-white'
             }`}>
-              {scanResult.status === 'SUCCESS' && <CheckCircle2 className="w-16 h-16 mb-4 text-green-400" />}
-              {scanResult.status === 'DUPLICATE' && <AlertCircle className="w-16 h-16 mb-4 text-yellow-400" />}
-              {!['SUCCESS', 'DUPLICATE'].includes(scanResult.status) && <XCircle className="w-16 h-16 mb-4 text-red-400" />}
+              {scanResult.status === 'SUCCESS' && <CheckCircle2 className="w-6 h-6 flex-shrink-0 mt-0.5" />}
+              {scanResult.status === 'DUPLICATE' && <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />}
+              {!['SUCCESS', 'DUPLICATE'].includes(scanResult.status) && <XCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />}
 
-              <h3 className="text-2xl font-bold mb-2">
-                {scanResult.status === 'SUCCESS' ? 'Attendance Marked!' :
-                 scanResult.status === 'DUPLICATE' ? 'Already Marked' : 'Scan Rejected'}
-              </h3>
-              <p className="text-sm opacity-90 mb-4">{scanResult.error || scanResult.message}</p>
-
-              {scanResult.participant && (
-                <div className="w-full bg-black/30 rounded-xl p-4 text-left mb-2">
-                  <p className="font-bold text-lg">{scanResult.participant.name}</p>
-                  <p className="text-sm opacity-80 font-mono">{scanResult.participant.rollNumber}</p>
-                  <div className="flex gap-2 mt-1 text-xs opacity-70">
-                    {scanResult.participant.branch && <span>{scanResult.participant.branch}</span>}
-                    {scanResult.participant.section && <span>• Sec {scanResult.participant.section}</span>}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleScanNext}
-                className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-medium transition-colors"
-              >
-                Scan Next
-              </button>
+              <div className="min-w-0">
+                <p className="font-bold text-sm">
+                  {scanResult.status === 'SUCCESS' ? 'Attendance Marked!' :
+                   scanResult.status === 'DUPLICATE' ? 'Already Marked' : 'Not Registered'}
+                </p>
+                {scanResult.participant ? (
+                  <p className="text-sm opacity-90 truncate">{scanResult.participant.name} &bull; {scanResult.participant.rollNumber}</p>
+                ) : (
+                  <p className="text-xs opacity-80">{scanResult.error || scanResult.message}</p>
+                )}
+              </div>
             </div>
           )}
         </div>
 
         {/* Stop camera button */}
         {cameraActive && (
-          <div className="bg-slate-900 p-4 flex justify-center">
+          <div className="bg-slate-900 p-3 flex justify-center">
             <button
               onClick={stopCamera}
               className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-800"
