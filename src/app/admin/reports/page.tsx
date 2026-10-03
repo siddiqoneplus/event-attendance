@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
-import { Download, FileSpreadsheet, CalendarDays } from "lucide-react";
+import { FileSpreadsheet, CalendarDays } from "lucide-react";
+
+interface EventItem {
+  id: string;
+  name: string;
+  date: string;
+  _count?: { participants: number; attendance: number };
+}
 
 export default function Reports() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
