@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award } from "lucide-react";
 import Link from "next/link";
 
 interface EventData {
@@ -174,6 +174,14 @@ export default function EventDetails() {
             <CheckCircle2 className="w-4 h-4" /> Reactivate Event
           </button>
         )}
+
+        {/* Generate Certificates */}
+        <Link
+          href={`/admin/events/${params.id}/certificates`}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-amber-500/20 flex-shrink-0"
+        >
+          <Award className="w-4 h-4" /> Certificates
+        </Link>
       </div>
 
       {/* Tabs */}
