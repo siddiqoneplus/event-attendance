@@ -107,14 +107,6 @@ export default function LoginForm() {
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
           </button>
         </form>
-        
-        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 w-full text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Demo Credentials:<br />
-            Admin: <b>admin / admin</b><br />
-            Employee: <b>employee1 / employee1</b>
-          </p>
-        </div>
       </div>
     </div>
   );
