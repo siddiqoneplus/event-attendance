@@ -336,7 +336,8 @@ export default function CertificatesPage() {
                 <>
                   <CheckCircle2 className="w-10 h-10 text-green-500" />
                   <p className="text-sm font-medium text-green-700 dark:text-green-400">Template loaded! Click to replace.</p>
-                  <img src={config.templateBase64} alt="Template" className="w-full max-h-40 object-contain rounded-lg mt-2 shadow" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={config.templateBase64!} alt="Template" className="w-full max-h-40 object-contain rounded-lg mt-2 shadow" />
                 </>
               ) : (
                 <>
