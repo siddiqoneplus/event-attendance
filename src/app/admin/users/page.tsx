@@ -11,7 +11,8 @@ export default function UsersList() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'EMPLOYEE' });
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'EMPLOYEE', status: 'ACTIVE' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,24 +25,61 @@ export default function UsersList() {
       });
   }, []);
 
-  const handleAddEmployee = async (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
+      const url = editingUserId ? `/api/admin/users/${editingUserId}` : '/api/admin/users';
+      const method = editingUserId ? 'PATCH' : 'POST';
+      
+      const payload = { ...formData };
+      if (editingUserId && !payload.password) {
+        delete (payload as any).password;
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || 'Failed to add employee');
+      if (!res.ok) throw new Error(data.error || 'Failed to save user');
       
-      setUsers([...users, data.user]);
-      setIsModalOpen(false);
-      setFormData({ name: '', username: '', password: '', role: 'EMPLOYEE' });
+      if (editingUserId) {
+        setUsers(users.map(u => u.id === editingUserId ? data.user : u));
+      } else {
+        setUsers([...users, data.user]);
+      }
+      
+      handleCloseModal();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (user: UserItem) => {
+    setEditingUserId(user.id);
+    setFormData({
+      name: user.name,
+      username: user.username,
+      password: '',
+      role: user.role,
+      status: user.status
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUserId(null);
+    setFormData({ name: '', username: '', password: '', role: 'EMPLOYEE', status: 'ACTIVE' });
+    setError('');
+  };
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -58,7 +96,11 @@ export default function UsersList() {
         </div>
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/30"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingUserId(null);
+            setFormData({ name: '', username: '', password: '', role: 'EMPLOYEE', status: 'ACTIVE' });
+            setIsModalOpen(true);
+          }}
         >
           <Plus className="w-4 h-4" />
           Add Employee
@@ -105,7 +147,10 @@ export default function UsersList() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">
+                      <button 
+                        onClick={() => handleOpenEdit(user)}
+                        className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline"
+                      >
                         Edit
                       </button>
                     </td>
@@ -121,13 +166,15 @@ export default function UsersList() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add New User</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingUserId ? 'Edit User' : 'Add New User'}
+              </h2>
+              <button onClick={handleCloseModal} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleAddEmployee} className="p-6 space-y-4">
+            <form onSubmit={handleSaveUser} className="p-6 space-y-4">
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-medium border border-red-100 dark:border-red-900/50">
                   {error}
@@ -155,12 +202,14 @@ export default function UsersList() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Password {editingUserId && <span className="text-slate-400 font-normal">(Leave blank to keep unchanged)</span>}
+                </label>
                 <input 
-                  type="password" required
+                  type="password" required={!editingUserId}
                   value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
                   className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
-                  placeholder="••••••••"
+                  placeholder={editingUserId ? "•••••••• (unchanged)" : "••••••••"}
                 />
               </div>
 
@@ -172,15 +221,25 @@ export default function UsersList() {
                 >
                   <option value="EMPLOYEE">Employee</option>
                   <option value="ADMIN">Admin</option>
-                </select>
-              </div>
+              {editingUserId && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</label>
+                  <select 
+                    value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="DISABLED">Disabled</option>
+                  </select>
+                </div>
+              )}
 
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors">
+                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center">
-                  {isSubmitting ? 'Adding...' : 'Add User'}
+                  {isSubmitting ? 'Saving...' : (editingUserId ? 'Save Changes' : 'Add User')}
                 </button>
               </div>
             </form>
