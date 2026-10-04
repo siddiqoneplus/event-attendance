@@ -8,7 +8,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const data = await request.json();
     const { name, username, email, role, status, password } = data;
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (name) updateData.name = name;
     if (username) updateData.username = username;
     if (email !== undefined) updateData.email = email;
