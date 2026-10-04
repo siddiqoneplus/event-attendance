@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award, Trash2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 interface EventData {
@@ -28,6 +28,7 @@ interface ParticipantData {
 
 export default function EventDetails() {
   const params = useParams();
+  const router = useRouter();
   const [event, setEvent] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ParticipantData[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
@@ -35,6 +36,9 @@ export default function EventDetails() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addingParticipant, setAddingParticipant] = useState(false);
   const [stoppingEvent, setStoppingEvent] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [modalError, setModalError] = useState("");
   const [modalSuccess, setModalSuccess] = useState("");
   const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
@@ -65,6 +69,18 @@ export default function EventDetails() {
       }
     } finally {
       setStoppingEvent(false);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    setDeletingEvent(true);
+    try {
+      const res = await fetch(`/api/admin/events/${params.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete event');
+      router.push('/admin/events');
+    } catch {
+      setDeletingEvent(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -182,6 +198,14 @@ export default function EventDetails() {
         >
           <Award className="w-4 h-4" /> Certificates
         </Link>
+
+        {/* Delete Event */}
+        <button
+          onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-sm font-semibold transition-colors flex-shrink-0"
+        >
+          <Trash2 className="w-4 h-4" /> Delete Event
+        </button>
       </div>
 
       {/* Tabs */}
@@ -363,6 +387,57 @@ export default function EventDetails() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ─────────────────── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-6 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Delete Event?</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  This will permanently delete <strong>&ldquo;{event?.name}&rdquo;</strong> along with all attendance records and participant assignments. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{event?.name}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                  placeholder="Type event name to confirm..."
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deletingEvent}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteEvent}
+                  disabled={deletingEvent || deleteConfirmText !== event?.name}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                >
+                  {deletingEvent ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</> : <><Trash2 className="w-4 h-4" /> Delete Permanently</>}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

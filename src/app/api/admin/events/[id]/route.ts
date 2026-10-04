@@ -50,7 +50,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+
+    // Manually cascade: delete related records first (MongoDB onDelete: NoAction)
+    await prisma.attendance.deleteMany({ where: { eventId: id } });
+    await prisma.eventParticipant.deleteMany({ where: { eventId: id } });
+    // Delete saved certificate config if any
+    await prisma.settings.deleteMany({ where: { key: `cert_config_${id}` } });
+
     await prisma.event.delete({ where: { id } });
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
