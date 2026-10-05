@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award, Trash2, AlertTriangle } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award, Trash2, AlertTriangle, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 
 interface EventData {
@@ -42,6 +42,26 @@ export default function EventDetails() {
   const [modalError, setModalError] = useState("");
   const [modalSuccess, setModalSuccess] = useState("");
   const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
+
+  // Search & filter state
+  const [search, setSearch] = useState("");
+  const [filterBranch, setFilterBranch] = useState("");
+  const [filterSection, setFilterSection] = useState("");
+
+  // Derived unique values for filter dropdowns
+  const branches = useMemo(() => [...new Set(participants.map(p => p.branch).filter(Boolean))].sort() as string[], [participants]);
+  const sections = useMemo(() => [...new Set(participants.map(p => p.section).filter(Boolean))].sort() as string[], [participants]);
+
+  // Filtered participants
+  const filteredParticipants = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return participants.filter(p => {
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.rollNumber.toLowerCase().includes(q);
+      const matchBranch = !filterBranch || p.branch === filterBranch;
+      const matchSection = !filterSection || p.section === filterSection;
+      return matchSearch && matchBranch && matchSection;
+    });
+  }, [participants, search, filterBranch, filterSection]);
 
   const fetchEvent = useCallback(async () => {
     const res = await fetch(`/api/admin/events/${params.id}`);
@@ -252,36 +272,106 @@ export default function EventDetails() {
             <ExcelUploader eventId={event.id} onUploadSuccess={() => { fetchEvent(); fetchParticipants(); }} />
             
             <div className="glass-panel rounded-2xl overflow-hidden">
+              {/* Header row */}
               <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h3 className="font-semibold text-slate-900 dark:text-white">Authorized Participants ({participants.length})</h3>
-                <button 
+                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  Authorized Participants
+                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                    {filteredParticipants.length === participants.length
+                      ? `${participants.length} total`
+                      : `${filteredParticipants.length} of ${participants.length}`}
+                  </span>
+                </h3>
+                <button
                   onClick={() => setIsAddModalOpen(true)}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <UserPlus className="w-4 h-4" /> Add Member Manually
                 </button>
               </div>
+
+              {/* Search & Filter bar */}
+              <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-2 items-center">
+                <div className="relative flex-1 min-w-48">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search by name or roll number…"
+                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                  {branches.length > 0 && (
+                    <select
+                      value={filterBranch}
+                      onChange={e => { setFilterBranch(e.target.value); setFilterSection(""); }}
+                      className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="">All Branches</option>
+                      {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  )}
+                  {sections.length > 0 && (
+                    <select
+                      value={filterSection}
+                      onChange={e => setFilterSection(e.target.value)}
+                      className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="">All Sections</option>
+                      {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
+                  {(search || filterBranch || filterSection) && (
+                    <button
+                      onClick={() => { setSearch(""); setFilterBranch(""); setFilterSection(""); }}
+                      className="px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/50">
-                      <th className="p-3 border-b dark:border-slate-700">Roll Number</th>
-                      <th className="p-3 border-b dark:border-slate-700">Name</th>
-                      <th className="p-3 border-b dark:border-slate-700">Branch</th>
-                      <th className="p-3 border-b dark:border-slate-700">Section</th>
+                      <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">#</th>
+                      <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Roll Number</th>
+                      <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Name</th>
+                      <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Branch</th>
+                      <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Section</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {participants.map(p => (
-                      <tr key={p.id}>
-                        <td className="p-3 font-medium">{p.rollNumber}</td>
-                        <td className="p-3">{p.name}</td>
-                        <td className="p-3">{p.branch || '-'}</td>
-                        <td className="p-3">{p.section || '-'}</td>
+                    {filteredParticipants.map((p, i) => (
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                        <td className="p-3 text-slate-400 text-xs w-10">{i + 1}</td>
+                        <td className="p-3 font-mono font-medium text-slate-900 dark:text-white">{p.rollNumber}</td>
+                        <td className="p-3 text-slate-700 dark:text-slate-300">{p.name}</td>
+                        <td className="p-3">
+                          {p.branch ? (
+                            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">{p.branch}</span>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="p-3">
+                          {p.section ? (
+                            <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded text-xs font-medium">{p.section}</span>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
                       </tr>
                     ))}
-                    {participants.length === 0 && (
-                      <tr><td colSpan={4} className="p-8 text-center text-slate-500">No participants registered yet.</td></tr>
+                    {filteredParticipants.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-10 text-center text-slate-500">
+                          {participants.length === 0 ? 'No participants registered yet.' : 'No participants match your search.'}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
