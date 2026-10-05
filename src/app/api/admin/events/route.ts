@@ -31,10 +31,22 @@ export async function POST(request: Request) {
 
     const data = await request.json();
     
-    // Generate unique Event ID
+    // Generate unique Event ID robust to deletions
     const year = new Date().getFullYear();
-    const count = await prisma.event.count() + 1;
-    const eventId = `EVENT-${year}-${count.toString().padStart(3, '0')}`;
+    const lastEvent = await prisma.event.findFirst({
+      where: { eventId: { startsWith: `EVENT-${year}-` } },
+      orderBy: { eventId: 'desc' }
+    });
+    
+    let nextNum = 1;
+    if (lastEvent && lastEvent.eventId) {
+      const parts = lastEvent.eventId.split('-');
+      if (parts.length === 3) {
+        const lastNum = parseInt(parts[2], 10);
+        if (!isNaN(lastNum)) nextNum = lastNum + 1;
+      }
+    }
+    const eventId = `EVENT-${year}-${nextNum.toString().padStart(3, '0')}`;
 
     const newEvent = await prisma.event.create({
       data: {
