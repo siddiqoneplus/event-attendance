@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   Loader2
 } from "lucide-react";
+import CommandPalette from "./CommandPalette";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            {/* Add header tools here */}
+            <CommandPalette />
           </div>
         </header>
 
