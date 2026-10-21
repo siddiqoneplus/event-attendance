@@ -11,7 +11,8 @@ import {
   LogOut, 
   Menu,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  GitMerge
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
@@ -47,6 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Users & Employees", href: "/admin/users", icon: Users },
     { name: "Roll Number Settings", href: "/admin/settings/roll-number", icon: Settings },
     { name: "Reports", href: "/admin/reports", icon: FileSpreadsheet },
+    { name: "Merge Duplicates", href: "/admin/participants/duplicates", icon: GitMerge },
   ];
 
   if (!user) return (
