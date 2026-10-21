@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ExcelUploader from "@/components/ExcelUploader";
-import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award, Trash2, AlertTriangle, Search, SlidersHorizontal } from "lucide-react";
+import { Calendar, MapPin, Activity, QrCode, UserPlus, X, Loader2, StopCircle, CheckCircle2, Award, Trash2, AlertTriangle, Search, SlidersHorizontal, Clock, Zap, BellOff } from "lucide-react";
 import Link from "next/link";
 
 interface EventData {
@@ -15,6 +15,8 @@ interface EventData {
   endTime: string;
   venue: string | null;
   status: string;
+  scheduledActivateAt?: string | null;
+  scheduledDeactivateAt?: string | null;
   _count?: { participants: number; attendance: number };
 }
 
@@ -43,6 +45,13 @@ export default function EventDetails() {
   const [modalSuccess, setModalSuccess] = useState("");
   const [newParticipant, setNewParticipant] = useState({ rollNumber: "", name: "", branch: "", section: "" });
 
+  // Scheduling state
+  const [schedActivate, setSchedActivate] = useState("");
+  const [schedDeactivate, setSchedDeactivate] = useState("");
+  const [schedSaving, setSchedSaving] = useState(false);
+  const [schedMsg, setSchedMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [schedTriggering, setSchedTriggering] = useState(false);
+
   // Search & filter state
   const [search, setSearch] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
@@ -66,7 +75,19 @@ export default function EventDetails() {
   const fetchEvent = useCallback(async () => {
     const res = await fetch(`/api/admin/events/${params.id}`);
     const data = await res.json();
-    if (data.event) setEvent(data.event);
+    if (data.event) {
+      setEvent(data.event);
+      // Pre-fill scheduling inputs from saved values
+      const toLocal = (iso: string | null | undefined) => {
+        if (!iso) return "";
+        // Convert UTC ISO to local datetime-local string
+        const d = new Date(iso);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
+      setSchedActivate(toLocal(data.event.scheduledActivateAt));
+      setSchedDeactivate(toLocal(data.event.scheduledDeactivateAt));
+    }
   }, [params.id]);
 
   const fetchParticipants = useCallback(async () => {
@@ -74,6 +95,69 @@ export default function EventDetails() {
     const data = await res.json();
     if (data.participants) setParticipants(data.participants);
   }, [params.id]);
+
+  const handleSaveSchedule = async () => {
+    setSchedSaving(true);
+    setSchedMsg(null);
+    try {
+      const res = await fetch(`/api/admin/events/${params.id}/schedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scheduledActivateAt: schedActivate ? new Date(schedActivate).toISOString() : null,
+          scheduledDeactivateAt: schedDeactivate ? new Date(schedDeactivate).toISOString() : null,
+        }),
+      });
+      if (res.ok) {
+        setSchedMsg({ type: 'ok', text: 'Schedule saved! The server will auto-transition this event.' });
+        await fetchEvent();
+      } else {
+        const d = await res.json();
+        setSchedMsg({ type: 'err', text: d.error || 'Failed to save schedule.' });
+      }
+    } catch {
+      setSchedMsg({ type: 'err', text: 'Network error. Please try again.' });
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
+  const handleClearSchedule = async () => {
+    setSchedSaving(true);
+    setSchedMsg(null);
+    try {
+      await fetch(`/api/admin/events/${params.id}/schedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledActivateAt: null, scheduledDeactivateAt: null }),
+      });
+      setSchedActivate("");
+      setSchedDeactivate("");
+      setSchedMsg({ type: 'ok', text: 'Schedule cleared.' });
+      await fetchEvent();
+    } catch {
+      setSchedMsg({ type: 'err', text: 'Failed to clear schedule.' });
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
+  const handleManualTrigger = async () => {
+    setSchedTriggering(true);
+    setSchedMsg(null);
+    try {
+      const res = await fetch('/api/cron/schedule-events');
+      const data = await res.json();
+      const a = data.activated?.length ?? 0;
+      const d = data.deactivated?.length ?? 0;
+      setSchedMsg({ type: 'ok', text: `Scheduler ran: ${a} activated, ${d} completed.` });
+      await fetchEvent();
+    } catch {
+      setSchedMsg({ type: 'err', text: 'Failed to trigger scheduler.' });
+    } finally {
+      setSchedTriggering(false);
+    }
+  };
 
   const handleStopEvent = async () => {
     if (!confirm(`Stop "${event?.name}"? Employees will no longer see this event.`)) return;
@@ -230,13 +314,15 @@ export default function EventDetails() {
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-700">
-        {['overview', 'participants', 'attendance'].map((tab) => (
+        {['overview', 'participants', 'attendance', 'schedule'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'schedule'
+              ? <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Schedule</span>
+              : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
@@ -262,6 +348,115 @@ export default function EventDetails() {
                 <Link href={`/admin/events/${event.id}/live`} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
                   <Activity className="w-4 h-4" /> Live Dashboard
                 </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'schedule' && (
+          <div className="max-w-2xl space-y-6">
+            {/* Info banner */}
+            <div className="glass-panel rounded-2xl p-5 flex gap-4 items-start">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">Auto-Scheduling</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Set a date &amp; time to automatically <span className="text-green-600 dark:text-green-400 font-medium">activate</span> this
+                  event and/or automatically <span className="text-red-500 dark:text-red-400 font-medium">stop</span> it.
+                  The server checks every <strong>60 seconds</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Current status chips */}
+            <div className="flex flex-wrap gap-3">
+              <StatusChip
+                label="Activate at"
+                value={event.scheduledActivateAt}
+                color="green"
+                icon={<Zap className="w-3.5 h-3.5" />}
+              />
+              <StatusChip
+                label="Stop at"
+                value={event.scheduledDeactivateAt}
+                color="red"
+                icon={<BellOff className="w-3.5 h-3.5" />}
+              />
+            </div>
+
+            {/* Form */}
+            <div className="glass-panel rounded-2xl p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-green-500" />
+                  Auto-Activate at (local time)
+                </label>
+                <input
+                  type="datetime-local"
+                  id="sched-activate"
+                  value={schedActivate}
+                  onChange={e => setSchedActivate(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                />
+                <p className="text-xs text-slate-400">Status will change from DRAFT/UPCOMING → <strong>ACTIVE</strong></p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <BellOff className="w-4 h-4 text-red-500" />
+                  Auto-Stop at (local time)
+                </label>
+                <input
+                  type="datetime-local"
+                  id="sched-deactivate"
+                  value={schedDeactivate}
+                  onChange={e => setSchedDeactivate(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                />
+                <p className="text-xs text-slate-400">Status will change from ACTIVE → <strong>COMPLETED</strong></p>
+              </div>
+
+              {/* Feedback message */}
+              {schedMsg && (
+                <div className={`p-3 rounded-xl text-sm font-medium ${
+                  schedMsg.type === 'ok'
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                }`}>
+                  {schedMsg.text}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  id="save-schedule-btn"
+                  onClick={handleSaveSchedule}
+                  disabled={schedSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 disabled:opacity-60"
+                >
+                  {schedSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Save Schedule
+                </button>
+                <button
+                  id="clear-schedule-btn"
+                  onClick={handleClearSchedule}
+                  disabled={schedSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <X className="w-4 h-4" /> Clear Schedule
+                </button>
+                <button
+                  id="trigger-scheduler-btn"
+                  onClick={handleManualTrigger}
+                  disabled={schedTriggering}
+                  title="Manually run the scheduler now"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  {schedTriggering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                  Run Now
+                </button>
               </div>
             </div>
           </div>
@@ -534,3 +729,49 @@ export default function EventDetails() {
     </div>
   );
 }
+
+function StatusChip({
+  label,
+  value,
+  color,
+  icon,
+}: {
+  label: string;
+  value?: string | null;
+  color: 'green' | 'red';
+  icon: React.ReactNode;
+}) {
+  // Capture "now" once at mount — calling Date.now() directly in render
+  // violates React's purity rules (impure function during render).
+  const [now] = useState(() => Date.now());
+
+  const colorMap = {
+    green: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+    red:   'bg-red-50   dark:bg-red-900/20   text-red-700   dark:text-red-400   border-red-200   dark:border-red-800',
+  };
+  const neutral = 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700';
+
+  if (!value) {
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${neutral}`}>
+        {icon} {label}: <em>Not set</em>
+      </span>
+    );
+  }
+
+  const d = new Date(value);
+  const diff = d.getTime() - now;
+  const absMin = Math.round(Math.abs(diff) / 60000);
+  const relative = diff > 0
+    ? absMin < 60 ? `in ${absMin}m` : `in ${Math.round(absMin / 60)}h`
+    : `${absMin}m ago`;
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${colorMap[color]}`}>
+      {icon}
+      <span>{label}: <strong>{d.toLocaleString()}</strong></span>
+      <span className="opacity-70">({relative})</span>
+    </span>
+  );
+}
+

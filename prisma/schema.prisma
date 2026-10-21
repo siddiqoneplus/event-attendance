@@ -31,6 +31,10 @@ model Event {
   createdBy        String
   createdAt        DateTime @default(now())
 
+  // Auto-scheduling: set these to enable automatic status transitions
+  scheduledActivateAt   DateTime? // auto-set to ACTIVE at this UTC time
+  scheduledDeactivateAt DateTime? // auto-set to COMPLETED at this UTC time
+
   participants     EventParticipant[]
   attendance       Attendance[]
 }
