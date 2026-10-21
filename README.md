@@ -3,6 +3,7 @@
 A modern, responsive, QR Code-Based Event Attendance Management System.
 
 ## Features Implemented
+
 - **Role-based Access**: Separate Admin and Employee (Scanner) dashboards, secured with JWT and Next.js Middleware.
 - **Dynamic Database**: Powered by Prisma ORM and SQLite (local dev friendly).
 - **Admin Capabilities**:
@@ -25,21 +26,26 @@ A modern, responsive, QR Code-Based Event Attendance Management System.
   - Fully responsive, mobile-first scanner.
 
 ## Quick Start
+
 The development server is already running on port `3001` (to avoid conflicts).
-You can access the application here: http://localhost:3001
+You can access the application here: <http://localhost:3001>
 
 ### Demo Credentials
-First, hit the setup endpoint to generate demo users: http://localhost:3001/api/setup
+
+First, hit the setup endpoint to generate demo users: <http://localhost:3001/api/setup>
 
 **Admin:**
+
 - Username: `admin`
 - Password: `admin`
 
 **Employee (Staff Scanner):**
+
 - Username: `employee1`
 - Password: `employee1`
 
 ## Workflow Testing
+
 1. Login as Admin.
 2. Go to **Events** -> **Create Event**. Make sure to set the status to "ACTIVE".
 3. Click **Manage** on the event.
