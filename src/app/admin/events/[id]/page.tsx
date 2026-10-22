@@ -541,14 +541,22 @@ export default function EventDetails() {
                       <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Name</th>
                       <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Branch</th>
                       <th className="p-3 border-b dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase">Section</th>
+                      <th className="p-3 border-b dark:border-slate-700 w-28"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {filteredParticipants.map((p, i) => (
-                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                      <tr key={p.id} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors cursor-pointer group">
                         <td className="p-3 text-slate-400 text-xs w-10">{i + 1}</td>
                         <td className="p-3 font-mono font-medium text-slate-900 dark:text-white">{p.rollNumber}</td>
-                        <td className="p-3 text-slate-700 dark:text-slate-300">{p.name}</td>
+                        <td className="p-3">
+                          <Link
+                            href={`/admin/participants/${p.id}`}
+                            className="text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 font-medium transition-colors"
+                          >
+                            {p.name}
+                          </Link>
+                        </td>
                         <td className="p-3">
                           {p.branch ? (
                             <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">{p.branch}</span>
@@ -558,6 +566,14 @@ export default function EventDetails() {
                           {p.section ? (
                             <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded text-xs font-medium">{p.section}</span>
                           ) : <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="p-3 w-28 text-right">
+                          <Link
+                            href={`/admin/participants/${p.id}`}
+                            className="text-xs text-blue-500 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium"
+                          >
+                            View Profile →
+                          </Link>
                         </td>
                       </tr>
                     ))}
