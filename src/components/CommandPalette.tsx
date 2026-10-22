@@ -193,7 +193,7 @@ export default function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label="Global search"
-        className="fixed top-[15vh] left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4"
+        className="fixed top-[15vh] left-1/2 lg:left-[calc(50%+8rem)] -translate-x-1/2 z-50 w-full max-w-2xl px-4"
         style={{ animation: "paletteIn 0.18s cubic-bezier(.4,0,.2,1) both" }}
       >
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
